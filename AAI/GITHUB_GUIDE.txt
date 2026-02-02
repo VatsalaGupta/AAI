@@ -1,0 +1,131 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                 📤 PUSH YOUR PROJECT TO GITHUB - QUICK GUIDE               ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ PREREQUISITE: Install Git
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You need to install Git on your computer first:
+
+👉 Download Git from: https://git-scm.com/download/win
+👉 Run the installer and follow the steps (use default settings)
+👉 Restart your computer or PowerShell after installation
+👉 Verify: Open PowerShell and type: git --version
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 STEP-BY-STEP COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After installing Git, open PowerShell and run these commands:
+
+STEP 1: Go to your project folder
+────────────────────────────────────────────────────────────────
+cd "c:\Users\Vatsala Gupta\Desktop\AAI"
+
+
+STEP 2: Initialize git (if not already done)
+────────────────────────────────────────────────────────────────
+git init
+
+
+STEP 3: Configure your Git credentials (first time only)
+────────────────────────────────────────────────────────────────
+git config --global user.name "Your Name"
+git config --global user.email "your.email@gmail.com"
+
+
+STEP 4: Add all files to git
+────────────────────────────────────────────────────────────────
+git add .
+
+
+STEP 5: Create a commit
+────────────────────────────────────────────────────────────────
+git commit -m "Initial commit: Task Allocation System with 3 test cases"
+
+
+STEP 6: Add the remote repository
+────────────────────────────────────────────────────────────────
+git remote add origin https://github.com/VatsalaGupta/AAI.git
+
+
+STEP 7: Push to GitHub
+────────────────────────────────────────────────────────────────
+git branch -M main
+git push -u origin main
+
+
+⚠️ If Step 7 fails with authentication error:
+   You need to create a Personal Access Token on GitHub:
+   
+   1. Go to: https://github.com/settings/tokens
+   2. Click "Generate new token"
+   3. Check "repo" checkbox
+   4. Copy the token
+   5. When Git asks for password, paste the token instead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 FILES BEING PUSHED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Your GitHub repository will contain:
+
+✅ assgn01.py         - Main Python program
+✅ input01.txt        - Test case 1: Linear dependency chain
+✅ input02.txt        - Test case 2: Multiple independent paths
+✅ input03.txt        - Test case 3: Mixed dependencies
+✅ README.txt         - Documentation (this beautiful file!)
+✅ GITHUB_GUIDE.txt   - This guide (optional to push)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ VERIFY PUSH WAS SUCCESSFUL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After pushing, visit your GitHub repository:
+https://github.com/VatsalaGupta/AAI
+
+You should see:
+✓ All your files listed
+✓ Your commit message visible
+✓ Green checkmark (if all files uploaded successfully)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 USEFUL GIT COMMANDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After first push, if you make changes:
+
+# See what changed
+git status
+
+# Add changes
+git add .
+
+# Commit changes
+git commit -m "Your message here"
+
+# Push to GitHub
+git push origin main
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❓ TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ERROR: "git: command not found"
+→ Install Git from https://git-scm.com/download/win
+
+ERROR: "fatal: not a git repository"
+→ Run: git init
+
+ERROR: "Permission denied" or "Authentication failed"
+→ Generate Personal Access Token: https://github.com/settings/tokens
+→ Use token as password instead of GitHub password
+
+ERROR: "remote origin already exists"
+→ Run: git remote remove origin
+→ Then: git remote add origin https://github.com/VatsalaGupta/AAI.git
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Need more help? Visit: https://docs.github.com/en/get-started/using-git
