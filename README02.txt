@@ -16,18 +16,18 @@ IMPORTANT CHANGE FROM ASSIGNMENT 01:
 
 PROBLEMS TO SOLVE:
 
-1) Earliest Completion Time
+1- Earliest Completion Time
 
    Given:
-      • Group size (N students)
-      • Prompts per student per day (K)
+      - Group size (N students)
+      - Prompts per student per day (K)
 
    We find the MINIMUM number of days required to complete all assignments
    while respecting:
-      • Task dependencies
-      • Daily prompt limits
+      - Task dependencies
+      - Daily prompt limits
 
-2) Minimum Subscription Plan
+2- Minimum Subscription Plan
 
    Given:
       -Group size (N students)
@@ -37,7 +37,7 @@ PROBLEMS TO SOLVE:
    all assignments can be completed within the given days.
 
 
-3) NEXT-DAY SOLUTION SHARING RULE (6 AM Rule)
+3- NEXT-DAY SOLUTION SHARING RULE (6 AM Rule)
 
    In this scenario:
 
@@ -57,7 +57,7 @@ PROBLEMS TO SOLVE:
 HOW TO RUN
 
 REQUIREMENTS installation
-   • Python 3.x (any version 3.6 or newer)
+   - Python 3.x (any version 3.6 or newer)
 
 COMMAND:
    python assg02.py <input_file> <max_days> <N> <K> [--nextday]
@@ -86,9 +86,9 @@ IMPORTANT:
 OUTPUT FORMAT
 
 The program prints:
-• For Problem 1 → Minimum days required
-• For Problem 2 → Minimum prompts per student per day (K)
-• If --nextday is used → Results under next-day sharing rule
+- For Problem 1 → Minimum days required
+- For Problem 2 → Minimum prompts per student per day (K)
+- If --nextday is used → Results under next-day sharing rule
 
 ALGORITHM USED
 
