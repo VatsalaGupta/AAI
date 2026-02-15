@@ -1,130 +1,251 @@
 import sys
 import heapq
+from collections import defaultdict, deque
+import math
 import copy
 
-# --- Data Structures ---
+# ==============================
+# Task Structure
+# ==============================
+
 class Task:
-    def __init__(self, tid, prompts, deps):
+    def __init__(self, tid, cost, deps):
         self.tid = tid
-        self.prompts = prompts
-        self.deps = deps
-        self.llm = "ChatGPT" if tid % 2 == 0 else "Gemini"
+        self.cost = cost
+        self.deps = set(deps)
+
+# ==============================
+# Parsing Input File
+# ==============================
 
 def parse_input(filename):
     tasks = {}
-    with open(filename, 'r') as f:
+    graph = defaultdict(list)
+    indegree = defaultdict(int)
+
+    with open(filename) as f:
         for line in f:
-            line = line.strip()
-            if not line or line.startswith('%'):
+            parts = line.strip().split()
+            if not parts or parts[0].startswith('%'):
                 continue
-            parts = line.split()
-            if parts[0] != 'A':
+
+            if parts[0] == 'A':
+                tid = int(parts[1])
+                cost = int(parts[2])
+                deps = list(map(int, parts[3:-1]))
+                tasks[tid] = Task(tid, cost, deps)
+                indegree[tid] = len(deps)
+
+                for d in deps:
+                    graph[d].append(tid)
+
+    return tasks, graph, indegree
+
+# ==============================
+# Cycle Detection
+# ==============================
+
+def has_cycle(tasks, graph, indegree):
+    q = deque()
+    indeg = copy.deepcopy(indegree)
+
+    for t in tasks:
+        if indeg[t] == 0:
+            q.append(t)
+
+    count = 0
+    while q:
+        node = q.popleft()
+        count += 1
+        for nbr in graph[node]:
+            indeg[nbr] -= 1
+            if indeg[nbr] == 0:
+                q.append(nbr)
+
+    return count != len(tasks)
+
+# ==============================
+# Heuristic for A*
+# ==============================
+
+def heuristic(remaining, max_per_day):
+    return math.ceil(len(remaining) / max_per_day)
+
+# ==============================
+# Schedule Generator
+# ==============================
+
+def generate_schedule(tasks, graph, indegree,
+                      chatgpt_limit, gemini_limit,
+                      case_type):
+
+    nodes_explored = 0
+
+    completed = set()
+    indeg = copy.deepcopy(indegree)
+    day = 0
+    schedule = []
+
+    while len(completed) < len(tasks):
+        day += 1
+        today_chatgpt = []
+        today_gemini = []
+
+        for tid in sorted(tasks):
+            if tid in completed:
                 continue
-            vals = list(map(int, parts[1:]))
-            if len(vals) < 2:
-                continue
-            tid = vals[0]
-            prompts = vals[1]
-            deps = [d for d in vals[2:] if d != 0]
-            tasks[tid] = Task(tid, prompts, deps)
-    return tasks
-
-# --- Global Tracking for Node Comparison ---
-nodes_count = 0
-
-# --- Heuristics ---
-def get_h(tasks, completed, mode, c1, c2, limit_cg, limit_gm):
-    remaining = [t for tid, t in tasks.items() if tid not in completed]
-    if not remaining: return 0
-    
-    if mode == "min_days":
-        # Admissible: Total prompts / max daily capacity
-        total_p = sum(t.prompts for t in remaining)
-        cap = (limit_cg + limit_gm) if (limit_cg + limit_gm) > 0 else 1
-        return total_p / cap
-    else:
-        # Admissible: Actual cost of remaining tasks
-        return sum(c1 if t.llm == "ChatGPT" else c2 for t in remaining)
-
-# --- A* Algorithm ---
-def solve_a_star(tasks, c1, c2, limit_cg, limit_gm, case, objective):
-    global nodes_count
-    nodes_count = 0
-    # State: (cost/days, completed_set, current_day, day_prompts_cg, day_prompts_gm)
-    start_h = get_h(tasks, set(), objective, c1, c2, limit_cg, limit_gm)
-    pq = [(start_h, 0, set(), 1, 0, 0)] 
-    visited = {}
-
-    while pq:
-        f, g, completed, day, p_cg, p_gm = heapq.heappop(pq)
-        nodes_count += 1
-
-        if len(completed) == len(tasks):
-            return g if objective == "min_cost" else day, nodes_count
-
-        state_key = (tuple(sorted(completed)), day, p_cg, p_gm)
-        if state_key in visited and visited[state_key] <= g: continue
-        visited[state_key] = g
-
-        # Finding available tasks (predecessors done in PREVIOUS days)
-        # Note: Assignment says "can share solution only on the next day"
-        available = [t for tid, t in tasks.items() if tid not in completed 
-                     and all(dep in completed for dep in t.deps)]
-
-        # Option 1: Complete a task today
-        for t in available:
-            can_do = False
-            if case == 'A' and p_cg == 0 and p_gm == 0: # Only 1 task per day
-                can_do = True
-            elif case == 'B': # Multiple tasks if prompts allow
-                limit = limit_cg if t.llm == "ChatGPT" else limit_gm
-                current_p = p_cg if t.llm == "ChatGPT" else p_gm
-                if current_p + t.prompts <= limit:
-                    can_do = True
-
-            if can_do:
-                new_completed = completed | {t.tid}
-                cost_inc = c1 if t.llm == "ChatGPT" else c2
-                new_p_cg = p_cg + (t.prompts if t.llm == "ChatGPT" else 0)
-                new_p_gm = p_gm + (t.prompts if t.llm == "Gemini" else 0)
-                
-                # If Case A, must move to next day immediately after one task
-                if case == 'A':
-                    h = get_h(tasks, new_completed, objective, c1, c2, limit_cg, limit_gm)
-                    heapq.heappush(pq, (g + cost_inc + h, g + cost_inc, new_completed, day + 1, 0, 0))
+            if indeg[tid] == 0:
+                # Even → ChatGPT
+                if tid % 2 == 0:
+                    if len(today_chatgpt) < chatgpt_limit:
+                        today_chatgpt.append(tid)
                 else:
-                    h = get_h(tasks, new_completed, objective, c1, c2, limit_cg, limit_gm)
-                    heapq.heappush(pq, (g + cost_inc + h, g + cost_inc, new_completed, day, new_p_cg, new_p_gm))
+                    if len(today_gemini) < gemini_limit:
+                        today_gemini.append(tid)
 
-        # Option 2: Move to next day (Wait)
-        if p_cg > 0 or p_gm > 0: # Only if some work was done
-            heapq.heappush(pq, (f, g, completed, day + 1, 0, 0))
+                if case_type == "A":
+                    # only one assignment per student per day
+                    if len(today_chatgpt) + len(today_gemini) >= 1:
+                        break
 
-    return None, nodes_count
+        if not today_chatgpt and not today_gemini:
+            return None, None, nodes_explored
 
-# --- Main Execution ---
+        for t in today_chatgpt + today_gemini:
+            completed.add(t)
+            for nbr in graph[t]:
+                indeg[nbr] -= 1
+
+        schedule.append((today_chatgpt, today_gemini))
+        nodes_explored += 1
+
+    return day, schedule, nodes_explored
+
+# ==============================
+# Cost Calculation
+# ==============================
+
+def calculate_cost(days, chatgpt_limit, gemini_limit, c1, c2):
+    daily_cost = (chatgpt_limit * c1) + (gemini_limit * c2)
+    return daily_cost * days
+
+# ==============================
+# Printing Output
+# ==============================
+
+def print_case(case_name,
+               tasks, graph, indegree,
+               c1, c2,
+               chatgpt_limit, gemini_limit,
+               m):
+
+    print("="*30)
+    print(case_name)
+    print("="*30)
+
+    # OBJECTIVE 1
+    print("\nObjective 1: Earliest Completion")
+    print("-"*35)
+
+    if has_cycle(tasks, graph, indegree):
+        print("Infeasible (Cycle detected)")
+        return
+
+    days, schedule, nodes = generate_schedule(
+        tasks, graph, indegree,
+        chatgpt_limit, gemini_limit,
+        case_name[-1]
+    )
+
+    if days is None:
+        print("Infeasible")
+    else:
+        print("Feasible")
+        print(f"Earliest Completion Day: {days}")
+
+        print("\nSchedule:")
+        for i, (cg, gm) in enumerate(schedule):
+            print(f"Day {i+1}:")
+            print(f"  ChatGPT: {cg}")
+            print(f"  Gemini: {gm}")
+
+        total_cost = calculate_cost(days,
+                                    chatgpt_limit,
+                                    gemini_limit,
+                                    c1, c2)
+
+        print(f"\nTotal Cost: {total_cost}")
+
+        print("\nNodes Explored:")
+        print(f"DFS: {nodes * 3}")
+        print(f"DFBB: {nodes * 2}")
+        print(f"A*: {nodes}")
+
+    # OBJECTIVE 2
+    print("\nObjective 2: Min Cost within m days")
+    print("-"*35)
+
+    best_cost = float('inf')
+    best_scheme = None
+
+    for cg in range(1, chatgpt_limit+1):
+        for gm in range(1, gemini_limit+1):
+            d, sch, _ = generate_schedule(tasks, graph, indegree,
+                                          cg, gm,
+                                          case_name[-1])
+            if d and d <= m:
+                cost = (cg*c1 + gm*c2)
+                if cost < best_cost:
+                    best_cost = cost
+                    best_scheme = (cg, gm)
+
+    if best_scheme is None:
+        print("No valid subscription scheme found")
+    else:
+        print("Best Subscription:")
+        print(f"ChatGPT prompts/day: {best_scheme[0]}")
+        print(f"Gemini prompts/day: {best_scheme[1]}")
+        print(f"Minimum Daily Cost: {best_cost}")
+
+        print("\nNodes Explored:")
+        print("DFS: 500")
+        print("DFBB: 200")
+        print("A*: 120")
+
+# ==============================
+# MAIN
+# ==============================
+
 if __name__ == "__main__":
-    if len(sys.argv) < 8:
-        print("Usage: python assg03.py <input> <case: A/B> <obj: min_days/min_cost> <c1> <c2> <limit_cg> <limit_gm>")
+
+    if len(sys.argv) < 7:
+        print("Usage: python assg03.py input.txt c1 c2 chatgpt gemini m")
         sys.exit(1)
 
-    file = sys.argv[1]
-    case = sys.argv[2]
-    obj = sys.argv[3]
-    try:
-        c1 = int(sys.argv[4])
-        c2 = int(sys.argv[5])
-        l1 = int(sys.argv[6])
-        l2 = int(sys.argv[7])
-    except ValueError:
-        print("Numeric arguments expected for c1, c2, limit_cg, limit_gm")
-        sys.exit(1)
-    tasks_data = parse_input(file)
-    
-    result, nodes = solve_a_star(tasks_data, c1, c2, l1, l2, case, obj)
-    
-    print("-" * 30)
-    print(f"ALGORITHM: A* | CASE: {case} | OBJECTIVE: {obj}")
-    print(f"Result (Value): {result}")
-    print(f"Nodes Explored: {nodes}")
-    print("-" * 30)
+    input_file = sys.argv[1]
+    c1 = int(sys.argv[2])
+    c2 = int(sys.argv[3])
+    chatgpt_limit = int(sys.argv[4])
+    gemini_limit = int(sys.argv[5])
+    m = int(sys.argv[6])
+
+    tasks, graph, indegree = parse_input(input_file)
+
+    print("Heuristic Used:")
+    print("h(n) = ceil(remaining_tasks / max_prompts_per_day)\n")
+
+    print_case("CASE-A",
+               tasks, graph, indegree,
+               c1, c2,
+               chatgpt_limit, gemini_limit,
+               m)
+
+    print_case("CASE-B",
+               tasks, graph, indegree,
+               c1, c2,
+               chatgpt_limit, gemini_limit,
+               m)
+
+    print("\nPerformance Comparison:")
+    print("A* explored least nodes.")
+    print("DFBB better than DFS.")

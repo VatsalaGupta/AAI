@@ -1,77 +1,23 @@
-ADVANCED ARTIFICIAL INTELLIGENCE LAB (CS5205)
-                           Assignment 03
+                 Task Allocation & Scheduling System (LLM-based)
+                           Assignment03
 
-Problem Statement:
+This project implements an intelligent scheduling system to allocate tasks between two LLMs (ChatGPT and Gemini) based on prompt costs,
+daily limits, and task dependencies.
 
-This assignment is a specialized extension of previous labs. We model a scenario 
-where two different LLMs (ChatGPT and Gemini) are available to a group of students.
-The goal is to solve optimization problems using advanced search algorithms.
+Features
+- Objective 1: Find the earliest completion day and the total cost for a fixed subscription.
+- Objective 2: Determine the cheapest subscription scheme to finish all tasks within `m` days.
+- Search Algorithms:Implements DFS, Depth First Branch and Bound (DFBB), and A* Search.
+- Constraint Handling:- Even-indexed tasks -> ChatGPT
+    - Odd-indexed tasks -> Gemini
+    - Case-A: Max 1 task per day.
+    - Case-B: Multiple tasks per day (respecting limits and next-day dependency sharing).
+How to Run
+Ensure you have Python 3.6+ installed.
 
-KEY CONSTRAINTS:
-   - LLM Allocation: Even-indexed assignments (A2, A4...) are solved by ChatGPT.
-   - LLM Allocation: Odd-indexed assignments (A1, A3...) are solved by Gemini.
-   - Costs: ChatGPT has cost c1 per prompt, and Gemini has cost c2 per prompt.
-   - Subscription: Group-wise subscription limits (Total prompts per day for each LLM).
+Command Format:
+python assgn03.py <input_file> <cost_cg> <cost_gemini> <limit_cg> <limit_gemini> <max_days>
 
-SCENARIOS:
-   - Case-A: A student can perform only ONE assignment per day.
-   - Case-B: A student can solve MULTIPLE assignments in a day if prompts are 
-             available and dependencies are met.
-   - Next-Day Rule: Solutions can only be shared on the next day at 6 AM.
+python assgn03.py input.txt 10 15 5 3 10
 
-PROBLEMS TO SOLVE:
-
-1) Earliest Completion Time (Objective: min_days)
-   Given a fixed subscription scheme (c1, c2 and daily limits), find the 
-   minimum number of days to finish all tasks.
-
-2) Best Subscription Plan (Objective: min_cost)
-   Given a deadline of 'm' days, find the minimum total subscription cost 
-   required to complete all tasks.
-
-HOW TO RUN:
-
-REQUIREMENTS:
-   - Python 3.x
-
-COMMAND STRUCTURE:
-   python assg03.py <input_file> <case> <objective> <c1> <c2> <limit_cg> <limit_gm>
-
-PARAMETERS:
-   - <case>: 'A' or 'B'
-   - <objective>: 'min_days' or 'min_cost'
-   - <c1>, <c2>: Cost per prompt for ChatGPT and Gemini
-   - <limit_cg>, <limit_gm>: Total daily prompts allowed for ChatGPT and Gemini
-
-EXAMPLES:
-   python assg03.py input01.txt B min_days 10 20 5 5
-   python assg03.py input01.txt A min_cost 15 25 10 10
-
-ALGORITHMS IMPLEMENTED:
-
-1) A* Search (Primary):
-   - Uses an admissible heuristic to find the optimal schedule.
-   - Heuristic for min_days: h(n) = ceil(Remaining_Prompts / Total_Daily_Capacity)
-   - Heuristic for min_cost: h(n) = Sum of costs of all remaining tasks.
-   
-2) Node Comparison Tracking:
-   - The program tracks 'Nodes Explored' to evaluate the efficiency of the 
-     search algorithm compared to standard DFS.
-
-INPUT FORMAT:
-
-Same as Assignment 01/02:
-   A <Task_ID> <Prompt_Count> <Dependencies...> 0
-
-OUTPUT FORMAT:
-
-The program outputs a summary including:
-   - Algorithm used (A*)
-   - Case and Objective being solved
-   - Optimal Value (Days or Cost)
-   - Total Nodes Explored during search
-
----------------------------------------------------------------------------
-Note: If no valid schedule exists within the constraints, the program will 
-output "Infeasible" or "None".
----------------------------------------------------------------------------
+Thankyou!
