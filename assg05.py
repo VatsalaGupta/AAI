@@ -1,172 +1,127 @@
+import itertools
 import random
-from itertools import combinations
+import os
 
-class CourseScheduler:
+class Course:
+    def __init__(self, cid, start, end, duration):
+        self.cid = cid
+        self.start = start
+        self.end = end
+        self.duration = duration
 
-    def __init__(self, room_count, course_list):
-        self.room_count = room_count
-        self.course_list = course_list
-        self.var_ids = {}
-        self.var_total = 0
+class SATScheduler:
+    def __init__(self, rooms, courses):
+        self.rooms = rooms
+        self.courses = courses
+        self.variables = {}
+        self.var_count = 0
         self.clauses = []
 
-    # creating new SAT variable
     def get_var(self, key):
-        if key not in self.var_ids:
-            self.var_total += 1
-            self.var_ids[key] = self.var_total
-        return self.var_ids[key]
+        if key not in self.variables:
+            self.var_count += 1
+            self.variables[key] = self.var_count
+        return self.variables[key]
 
-    def add(self, clause):
+    def add_clause(self, clause):
         self.clauses.append(clause)
 
-    # -------- Encoding 1 --------
-    # X(i,r,d) -> course i starts day d in room r
+    def print_stats(self, encoding_name):
+        c2 = sum(1 for c in self.clauses if len(c) == 2)
+        c3 = sum(1 for c in self.clauses if len(c) == 3)
+        c4plus = sum(1 for c in self.clauses if len(c) >= 4)
+        
+        print(f"Encoding: {encoding_name}")
+        print(f"Variables: {self.var_count}")
+        print(f"Clauses: {len(self.clauses)}")
+        print(f"2-literal clauses: {c2}")
+        print(f"3-literal clauses: {c3}")
+        print(f"4+-literal clauses: {c4plus}")
 
-    def encode_v1(self):
+    def encode_option1(self):
+        self.variables, self.var_count, self.clauses = {}, 0, []
+        for c in self.courses:
+            possible = []
+            for t in range(c.start, c.end - c.duration + 2):
+                for r in range(1, self.rooms + 1):
+                    v = self.get_var((c.cid, t, r))
+                    possible.append(v)
+            self.add_clause(possible)
+            for a, b in itertools.combinations(possible, 2):
+                self.add_clause([-a, -b])
 
-        for i, (start, deadline, dur) in enumerate(self.course_list):
+        for c1, c2 in itertools.combinations(self.courses, 2):
+            for r in range(1, self.rooms + 1):
+                for t1 in range(c1.start, c1.end - c1.duration + 2):
+                    for t2 in range(c2.start, c2.end - c2.duration + 2):
+                        if not (t1 + c1.duration - 1 < t2 or t2 + c2.duration - 1 < t1):
+                            v1 = self.get_var((c1.cid, t1, r))
+                            v2 = self.get_var((c2.cid, t2, r))
+                            self.add_clause([-v1, -v2])
 
-            days = range(start, deadline - dur + 2)
-            choices = []
+    def encode_option2(self):
+        self.variables, self.var_count, self.clauses = {}, 0, []
+        for c in self.courses:
+            room_vars = [self.get_var(("room", c.cid, r)) for r in range(1, self.rooms + 1)]
+            time_vars = [self.get_var(("time", c.cid, t)) for t in range(c.start, c.end - c.duration + 2)]
+            self.add_clause(room_vars)
+            for a, b in itertools.combinations(room_vars, 2): self.add_clause([-a, -b])
+            self.add_clause(time_vars)
+            for a, b in itertools.combinations(time_vars, 2): self.add_clause([-a, -b])
 
-            for r in range(self.room_count):
-                for d in days:
-                    choices.append(self.get_var(("X", i, r, d)))
+        for c1, c2 in itertools.combinations(self.courses, 2):
+            for r in range(1, self.rooms + 1):
+                y1, y2 = self.get_var(("room", c1.cid, r)), self.get_var(("room", c2.cid, r))
+                for t1 in range(c1.start, c1.end - c1.duration + 2):
+                    for t2 in range(c2.start, c2.end - c2.duration + 2):
+                        if not (t1 + c1.duration - 1 < t2 or t2 + c2.duration - 1 < t1):
+                            z1, z2 = self.get_var(("time", c1.cid, t1)), self.get_var(("time", c2.cid, t2))
+                            self.add_clause([-y1, -z1, -y2, -z2])
 
-            self.add(choices)
-
-            for a, b in combinations(choices, 2):
-                self.add([-a, -b])
-
-        self.room_overlap_rules()
-
-    # avoiding overlapping of courses in same room
-    def room_overlap_rules(self):
-
-        n = len(self.course_list)
-
-        for i in range(n):
-            s1, d1, t1 = self.course_list[i]
-
-            for j in range(i + 1, n):
-                s2, d2, t2 = self.course_list[j]
-
-                for r in range(self.room_count):
-
-                    for d_i in range(s1, d1 - t1 + 2):
-                        for d_j in range(s2, d2 - t2 + 2):
-
-                            end_i = d_i + t1 - 1
-                            end_j = d_j + t2 - 1
-
-                            if not (end_i < d_j or end_j < d_i):
-
-                                v1 = self.get_var(("X", i, r, d_i))
-                                v2 = self.get_var(("X", j, r, d_j))
-
-                                self.add([-v1, -v2])
-
-    # -------- Encoding 2 --------
-    # separating room and day variables
-
-    def encode_v2(self):
-
-        for i, (start, deadline, dur) in enumerate(self.course_list):
-
-            days = range(start, deadline - dur + 2)
-
-            room_vars = [self.get_var(("R", i, r)) for r in range(self.room_count)]
-            day_vars = [self.get_var(("D", i, d)) for d in days]
-
-            self.add(room_vars)
-            self.add(day_vars)
-
-            for a, b in combinations(room_vars, 2):
-                self.add([-a, -b])
-
-            for a, b in combinations(day_vars, 2):
-                self.add([-a, -b])
-
-        self.overlap_rules_v2()
-
-    def overlap_rules_v2(self):
-
-        n = len(self.course_list)
-
-        for i in range(n):
-            s1, d1, t1 = self.course_list[i]
-
-            for j in range(i + 1, n):
-                s2, d2, t2 = self.course_list[j]
-
-                for r in range(self.room_count):
-
-                    for d_i in range(s1, d1 - t1 + 2):
-                        for d_j in range(s2, d2 - t2 + 2):
-
-                            end_i = d_i + t1 - 1
-                            end_j = d_j + t2 - 1
-
-                            if not (end_i < d_j or end_j < d_i):
-
-                                r1 = self.get_var(("R", i, r))
-                                r2 = self.get_var(("R", j, r))
-
-                                d1v = self.get_var(("D", i, d_i))
-                                d2v = self.get_var(("D", j, d_j))
-
-                                self.add([-r1, -r2, -d1v, -d2v])
-
-    # DIMACS file
-    def save_cnf(self, name):
-
-        with open(name, "w") as f:
-
-            f.write(f"p cnf {self.var_total} {len(self.clauses)}\n")
-
+    def write_dimacs(self, file):
+        with open(file, "w") as f:
+            f.write(f"p cnf {self.var_count} {len(self.clauses)}\n")
             for c in self.clauses:
                 f.write(" ".join(map(str, c)) + " 0\n")
 
-
-# -------- Random testcase generator --------
-
-def make_random_data():
-
-    rooms = random.randint(2, 5)
-    n = random.randint(5, 10)
-
+def read_input(filename):
+    with open(filename) as f:
+        lines = f.readlines()
+    rooms = int(lines[0])
+    n = int(lines[1])
     courses = []
-
-    for _ in range(n):
-
-        start = random.randint(1, 10)
-        length = random.randint(1, 4)
-        deadline = start + random.randint(length, 6)
-
-        courses.append((start, deadline, length))
-
+    for i in range(n):
+        parts = lines[i+2].split()
+        courses.append(Course(int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3])))
     return rooms, courses
 
-
-# -------- main --------
+def generate_100_cases():
+    for i in range(100):
+        rooms = random.randint(2, 6)
+        n = random.randint(5, 15)
+        with open(f"test{i}.txt", "w") as f:
+            f.write(f"{rooms}\n{n}\n")
+            for cid in range(1, n + 1):
+                start = random.randint(1, 20)
+                dur = random.randint(1, 5)
+                end = start + random.randint(dur, 10)
+                f.write(f"{cid} {start} {end} {dur}\n")
 
 if __name__ == "__main__":
+    generate_100_cases()
+    print("100 test cases generated.")
 
-    rooms, courses = make_random_data()
-    
-    print("Number of rooms:", rooms)
-    print("Number of courses:", len(courses))
 
-    for i, c in enumerate(courses):
-     print(f"Course {i} -> start:{c[0]} deadline:{c[1]} duration:{c[2]}")
+    rooms, courses = read_input("test0.txt")
+    solver = SATScheduler(rooms, courses)
 
-    s1 = CourseScheduler(rooms, courses)
-    s1.encode_v1()
-    s1.save_cnf("encoding1.cnf")
+    print("\n--- Sample Output for test0.txt ---")
+    solver.encode_option2()
+    solver.print_stats("option2")
+    solver.write_dimacs("output2.cnf")
 
-    s2 = CourseScheduler(rooms, courses)
-    s2.encode_v2()
-    s2.save_cnf("encoding2.cnf")
+    print("-" * 25)
 
-    print("CNF files created.")
+    solver.encode_option1()
+    solver.print_stats("option1")
+    solver.write_dimacs("output1.cnf")
